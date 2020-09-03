@@ -6,7 +6,6 @@
 #include <eosiolib/contract.hpp>
 #include <eosiolib/crypto.hpp>
 
-// #define isDebug = TRUE
 class [[eosio::contract]] reg : public eosio::contract {
 
 public:
@@ -24,18 +23,12 @@ public:
     
     
 
-    #ifdef isDebug
-        static constexpr eosio::name _me = "bob.tc"_n;
-        static const uint64_t _GUEST_EXPIRATION = 10; //10 seconds  
-        static constexpr eosio::symbol _MIN_SYMBOL = eosio::symbol(eosio::symbol_code("FLO"),4);
-        static const uint64_t _MIN_AMOUNT = 10000; 
-    #else 
-        static constexpr eosio::name _me = "registrator"_n;
-        static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
-        static constexpr eosio::symbol _MIN_SYMBOL = eosio::symbol(eosio::symbol_code("UNIT"),4);
-        static const uint64_t _MIN_AMOUNT = 10000; 
+    static constexpr eosio::name _me = "registrator"_n;
+    static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
+    static constexpr eosio::symbol _MIN_SYMBOL = eosio::symbol(eosio::symbol_code("FLO"),4);
+
+    static const uint64_t _MIN_AMOUNT = 10000; 
         
-    #endif
     static const uint64_t _BASKET = 3;
     
     
