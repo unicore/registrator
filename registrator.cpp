@@ -10,8 +10,8 @@ using namespace eosio;
     
     auto guest = guests.find(username.value);
     
-    eosio::check(d_net.symbol == _MIN_SYMBOL, "Wrong symbol");
-    eosio::check(d_cpu.symbol == _MIN_SYMBOL, "Wrong symbol");
+    eosio::check(d_net.symbol == _MIN_SYMBOL, "Wrong symbol for CPU");
+    eosio::check(d_cpu.symbol == _MIN_SYMBOL, "Wrong symbol for NET");
     
     eosio::check( is_account( username ), "User account does not exist");
 

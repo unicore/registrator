@@ -25,7 +25,7 @@ public:
 
     static constexpr eosio::name _me = "registrator"_n;
     static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
-    static constexpr eosio::symbol _MIN_SYMBOL = eosio::symbol(eosio::symbol_code("FLO"),4);
+    static constexpr eosio::symbol _MIN_SYMBOL = eosio::symbol(eosio::symbol_code("UNIT"),4);
 
     static const uint64_t _MIN_AMOUNT = 10000; 
         
