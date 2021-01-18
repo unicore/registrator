@@ -5,6 +5,7 @@
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/contract.hpp>
 #include <eosiolib/crypto.hpp>
+#include "exchange_state.hpp"
 
 class [[eosio::contract]] reg : public eosio::contract {
 
@@ -14,18 +15,25 @@ public:
 
     [[eosio::action]] void addguest(eosio::name username, eosio::name registrator, eosio::public_key public_key, eosio::asset d_cpu, eosio::asset d_net);
     [[eosio::action]] void update();
-    
+    static void add_balance(eosio::name payer, eosio::name username, eosio::asset quantity, uint64_t code);
 
-    static void recieve(eosio::name payer, eosio::name username, eosio::asset quantity, uint64_t code);
+    [[eosio::action]] void payforguest(eosio::name payer, eosio::name username, eosio::asset quantity);
     
+    [[eosio::action]] void regaccount(eosio::name payer, eosio::name newaccount, eosio::public_key public_key, eosio::asset cpu, eosio::asset net, uint64_t ram_bytes, bool is_guest, bool set_referer);
 
     void apply(uint64_t receiver, uint64_t code, uint64_t action);
     
     
 
     static constexpr eosio::name _me = "registrator"_n;
-    static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
-    static constexpr eosio::symbol _MIN_SYMBOL = eosio::symbol(eosio::symbol_code("UNIT"),4);
+    static constexpr eosio::name _partners = "part"_n;
+    static constexpr eosio::name _system_account = "eosio"_n;
+    // static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
+    static const uint64_t _GUEST_EXPIRATION = 10; //10 secs
+    static constexpr eosio::symbol _SYMBOL = eosio::symbol(eosio::symbol_code("FLO"),4);
+    static constexpr eosio::symbol _ramcore_symbol = eosio::symbol(eosio::symbol_code("RAMCORE"), 4);
+
+    static constexpr eosio::symbol RAM_symbol{"RAM", 0};
 
     static const uint64_t _MIN_AMOUNT = 10000; 
         
@@ -78,9 +86,9 @@ public:
         
         eosio::name registrator;
         eosio::public_key public_key;
-        eosio::asset d_cpu;
-        eosio::asset d_net;
-
+        eosio::asset cpu;
+        eosio::asset net;
+        bool set_referer = false;
         eosio::time_point_sec expiration;
 
         eosio::asset to_pay;
@@ -88,7 +96,7 @@ public:
         uint64_t primary_key() const {return username.value;}
         uint64_t byexpr() const {return expiration.sec_since_epoch();}
 
-        EOSLIB_SERIALIZE(guests, (username)(registrator)(public_key)(d_cpu)(d_net)(expiration)(to_pay))
+        EOSLIB_SERIALIZE(guests, (username)(registrator)(public_key)(cpu)(net)(set_referer)(expiration)(to_pay))
     };
 
     typedef eosio::multi_index<"guests"_n, guests,
@@ -110,17 +118,25 @@ public:
  
 
 
-    struct [[eosio::table]] lifetimed {
+    struct [[eosio::table]] balance {
         eosio::name username;
-        eosio::name registrator;
+        eosio::asset quantity;
 
         uint64_t primary_key() const {return username.value;}
 
-        EOSLIB_SERIALIZE(lifetimed, (username)(registrator))
+        EOSLIB_SERIALIZE(balance, (username)(quantity))
     };
 
-    typedef eosio::multi_index<"lifetimed"_n, lifetimed> lifetimed_index;
+    typedef eosio::multi_index<"balance"_n, balance> balances_index;
  
 
+    eosio::asset determine_ram_price(uint32_t bytes) {
+      eosiosystem::rammarket rammarkettable(_system_account, _system_account.value);
+      auto market = rammarkettable.get(_ramcore_symbol.raw());
+      auto ram_price = market.convert(eosio::asset{bytes, RAM_symbol}, _SYMBOL);
+      ram_price.amount = (ram_price.amount * 200 + 199) / 199; // add ram fee
+      return ram_price;
+    }
+    
 
 };
