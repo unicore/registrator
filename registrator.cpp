@@ -15,6 +15,8 @@ using namespace eosio;
     authority active_auth;
     active_auth.threshold = 1;
     
+
+
     key_weight keypermission{public_key, 1};
     active_auth.keys.emplace_back(keypermission);
 
@@ -33,6 +35,13 @@ using namespace eosio;
     balances.modify(balance, payer, [&](auto &b){
       b.quantity -= total_pay;
     });
+
+
+    //TODO check newaccount length
+    std::string newaccount_string = newaccount.to_string();
+    
+    eosio::check(newaccount_string.size() == 12, "Length of a account name is should be 12 symbols");
+
 
     if (is_guest == true) {
       
@@ -68,7 +77,6 @@ using namespace eosio;
     
     }
     
-    //CHECK user permissions for create a short names before send it to system account which not check a creator permissions
     action(permission_level(_me, "active"_n), 
       "eosio"_n, "newaccount"_n, std::tuple(_me, 
       newaccount, owner_auth, active_auth) 
