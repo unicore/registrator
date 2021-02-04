@@ -3,11 +3,6 @@
 using namespace eosio;
 
 
-  void reg::addguest(eosio::name username, eosio::name registrator, eosio::public_key public_key, eosio::asset d_cpu, eosio::asset d_net){
-    
-
-  }
-
   [[eosio::action]] void reg::regaccount(eosio::name payer, eosio::name newaccount, eosio::public_key public_key, eosio::asset cpu, eosio::asset net, uint64_t ram_bytes, bool is_guest, bool set_referer){
     require_auth(payer);
 
@@ -104,13 +99,13 @@ using namespace eosio;
      std::make_tuple(_self, newaccount, net, cpu, !is_guest)
     ).send();
 
-    // if (!is_guest)
-    action(
-      permission_level{ _self, "active"_n},
-      _partners,
-      "reg"_n,
-     std::make_tuple(newaccount, payer, std::string(""))
-    ).send();
+    if (set_referer)
+      action(
+        permission_level{ _self, "active"_n},
+        _partners,
+        "reg"_n,
+       std::make_tuple(newaccount, payer, std::string(""))
+      ).send();
 
     
   }
@@ -169,31 +164,37 @@ using namespace eosio;
     }
   }
 
+
   void reg::add_balance(eosio::name payer, eosio::name username, eosio::asset quantity, uint64_t code){
     require_auth(payer);
 
+    print("want add balance", username);
     balances_index balances(_me, _me.value);
     auto balance = balances.find(username.value);
+    print("find balance: ", balance->username);
 
-    eosio::check(code == "eosio.token"_n.value, "Only system token contract is available for add to balance;");
-    eosio::check(quantity.symbol == _SYMBOL, "Only core symbol can be added to registrator balance");
 
-    if (username == ""_n)
-      username = payer;
+    if (code == "eosio.token"_n.value && quantity.symbol == _SYMBOL){
+      print("im inside");
+      if (username == ""_n)
+        username = payer;
 
-    if (balance  == balances.end()){
-      balances.emplace(_me, [&](auto &b){
-        b.username = username;
-        b.quantity = quantity;
-      }); 
-    } else {
-      balances.modify(balance, _me, [&](auto &b){
-        b.quantity += quantity;
-      });
-    };
+      print("quantity", quantity);
+      if (balance  == balances.end()){
+        balances.emplace(_me, [&](auto &b){
+          b.username = username;
+          b.quantity = quantity;
+        }); 
+      } else {
+        print("quantity", quantity);
+        balances.modify(balance, _me, [&](auto &b){
+          b.quantity += quantity;
+        });
+      };
+    }
   }
 
-  [[eosio::action]] void reg::payforguest(eosio::name payer, eosio::name username, eosio::asset quantity){
+  [[eosio::action]] void reg::payforguest(eosio::name payer, eosio::name username, eosio::asset quantity) {
     require_auth(payer);
 
     guests_index guests(_me, _me.value);
@@ -201,19 +202,21 @@ using namespace eosio;
     eosio::check(guest != guests.end(), "Guest is not found");
 
 
-    balances_index balances(_me, _me.value);
-    auto balance = balances.find(payer.value);
+    if (payer != _core){ //not modify only on internal buy
+      balances_index balances(_me, _me.value);
+      auto balance = balances.find(payer.value);
 
-    //CHECK and mofidy balance
-    eosio::check(balance -> quantity >= guest ->to_pay, "Not enought balance for pay");
+      //CHECK and mofidy balance
+      eosio::check(balance -> quantity >= guest ->to_pay, "Not enought balance for pay");
   
-    if (balance -> quantity == quantity)
-      balances.erase(balance);
-    else 
-      balances.modify(balance, payer, [&](auto &b){
-        b.quantity -= guest -> to_pay;
-      });
-
+      if (balance -> quantity == quantity){
+        balances.erase(balance);
+      } else {
+        balances.modify(balance, payer, [&](auto &b){
+          b.quantity -= guest -> to_pay;
+        });
+      }
+    }
     eosio::check((guest->to_pay).amount == quantity.amount, "Wrong amount");
     eosio::check((guest->to_pay).symbol == quantity.symbol, "Wrong symbol");
         
@@ -234,16 +237,16 @@ extern "C" {
    
    /// The apply method implements the dispatch of events to this contract
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+        print("code: ", name(code));
         if (code == reg::_me.value) {
-          if (action == "addguest"_n.value){
-            execute_action(name(receiver), name(code), &reg::addguest);
-          } else if (action == "update"_n.value){
+          if (action == "update"_n.value){
             execute_action(name(receiver), name(code), &reg::update);
           } else if (action == "payforguest"_n.value){
             execute_action(name(receiver), name(code), &reg::payforguest);
           } else if (action == "regaccount"_n.value){
             execute_action(name(receiver), name(code), &reg::regaccount);
-          }     
+          }  
+
         } else {
           if (action == "transfer"_n.value){
             
@@ -255,10 +258,10 @@ extern "C" {
             };
 
             auto op = eosio::unpack_action_data<transfer>();
-            print("on here");
             if (op.to == reg::_me){
+
               eosio::name username = eosio::name(op.memo.c_str());
-              print("on here");  
+              print("want add balance0", username);
               reg::add_balance(op.from, username, op.quantity, code);
             }
           }

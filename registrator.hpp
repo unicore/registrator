@@ -13,7 +13,7 @@ public:
     reg( eosio::name receiver, eosio::name code, eosio::datastream<const char*> ds ): eosio::contract(receiver, code, ds)
     {}
 
-    [[eosio::action]] void addguest(eosio::name username, eosio::name registrator, eosio::public_key public_key, eosio::asset d_cpu, eosio::asset d_net);
+    // [[eosio::action]] void addguest(eosio::name username, eosio::name registrator, eosio::public_key public_key, eosio::asset d_cpu, eosio::asset d_net);
     [[eosio::action]] void update();
     static void add_balance(eosio::name payer, eosio::name username, eosio::asset quantity, uint64_t code);
 
@@ -27,6 +27,7 @@ public:
 
     static constexpr eosio::name _me = "registrator"_n;
     static constexpr eosio::name _partners = "part"_n;
+    static constexpr eosio::name _core = "unicore"_n;
     static constexpr eosio::name _system_account = "eosio"_n;
     // static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
     static const uint64_t _GUEST_EXPIRATION = 10; //10 secs
