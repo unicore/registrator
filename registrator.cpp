@@ -3,7 +3,7 @@
 using namespace eosio;
 
 
-  [[eosio::action]] void reg::regaccount(eosio::name payer, eosio::name newaccount, eosio::public_key public_key, eosio::asset cpu, eosio::asset net, uint64_t ram_bytes, bool is_guest, bool set_referer){
+  [[eosio::action]] void reg::regaccount(eosio::name payer, eosio::name referer, eosio::name newaccount, eosio::public_key public_key, eosio::asset cpu, eosio::asset net, uint64_t ram_bytes, bool is_guest, bool set_referer){
     require_auth(payer);
 
     //активные разрешения
@@ -104,7 +104,7 @@ using namespace eosio;
         permission_level{ _self, "active"_n},
         _partners,
         "reg"_n,
-       std::make_tuple(newaccount, payer, std::string(""))
+       std::make_tuple(newaccount, referer, std::string(""))
       ).send();
 
     
