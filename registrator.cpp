@@ -99,7 +99,7 @@ using namespace eosio;
      std::make_tuple(_self, newaccount, net, cpu, !is_guest)
     ).send();
 
-    if (set_referer)
+    if (set_referer && referer != ""_n)
       action(
         permission_level{ _self, "active"_n},
         _partners,
