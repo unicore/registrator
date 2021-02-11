@@ -32,10 +32,11 @@ using namespace eosio;
     });
 
 
-    //TODO check newaccount length
+    
     std::string newaccount_string = newaccount.to_string();
     
-    eosio::check(newaccount_string.size() == 12, "Length of a account name is should be 12 symbols");
+    //TODO check newaccount length and point
+    // eosio::check(newaccount_string.size() == 12, "Length of a account name is should be 12 symbols");
 
 
     if (is_guest == true) {
