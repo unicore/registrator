@@ -9,7 +9,6 @@ using namespace eosio;
     //активные разрешения
     authority active_auth;
     active_auth.threshold = 1;
-    
 
 
     key_weight keypermission{public_key, 1};
@@ -79,30 +78,30 @@ using namespace eosio;
     ).send();
 
     action(
-      permission_level{ _self, "active"_n},
+      permission_level{ _me, "active"_n},
       "eosio"_n,
       "buyram"_n,
-      std::make_tuple(_self, newaccount, ram_price)
+      std::make_tuple(_me, newaccount, ram_price)
     ).send();
     
     //TODO check it?!
     // action(
-    //   permission_level{ _self, "active"_n},
+    //   permission_level{ _me, "active"_n},
     //   "eosio"_n,
     //   "buyram"_n,
-    //   make_tuple(_self, _self, ram_replace_amount)
+    //   make_tuple(_me, _me, ram_replace_amount)
     // ).send();
 
     action(
-      permission_level{ _self, "active"_n},
+      permission_level{ _me, "active"_n},
       "eosio"_n,
       "delegatebw"_n,
-     std::make_tuple(_self, newaccount, net, cpu, !is_guest)
+     std::make_tuple(_me, newaccount, net, cpu, !is_guest)
     ).send();
 
-    if (set_referer && referer != ""_n)
+    if (set_referer)
       action(
-        permission_level{ _self, "active"_n},
+        permission_level{ _me, "active"_n},
         _partners,
         "reg"_n,
        std::make_tuple(newaccount, referer, std::string(""))

@@ -96,13 +96,14 @@ public:
         
         uint64_t primary_key() const {return username.value;}
         uint64_t byexpr() const {return expiration.sec_since_epoch();}
+        uint64_t byreg() const {return registrator.value;}
 
         EOSLIB_SERIALIZE(guests, (username)(registrator)(public_key)(cpu)(net)(set_referer)(expiration)(to_pay))
     };
 
     typedef eosio::multi_index<"guests"_n, guests,
-       eosio::indexed_by< "byexpr"_n, eosio::const_mem_fun<guests, uint64_t, 
-                      &guests::byexpr>>
+       eosio::indexed_by< "byexpr"_n, eosio::const_mem_fun<guests, uint64_t, &guests::byexpr>>,
+       eosio::indexed_by< "byreg"_n, eosio::const_mem_fun<guests, uint64_t, &guests::byreg>>
     > guests_index;
 
 
