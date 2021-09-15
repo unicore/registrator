@@ -29,9 +29,9 @@ public:
     static constexpr eosio::name _partners = "part"_n;
     static constexpr eosio::name _core = "unicore"_n;
     static constexpr eosio::name _system_account = "eosio"_n;
-    // static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
-    static const uint64_t _GUEST_EXPIRATION = 10; //10 secs
-    static constexpr eosio::symbol _SYMBOL = eosio::symbol(eosio::symbol_code("FLO"),4);
+    static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
+    // static const uint64_t _GUEST_EXPIRATION = 10; //10 secs
+    static constexpr eosio::symbol _SYMBOL = eosio::symbol(eosio::symbol_code("FLOWER"),4);
     static constexpr eosio::symbol _ramcore_symbol = eosio::symbol(eosio::symbol_code("RAMCORE"), 4);
 
     static constexpr eosio::symbol RAM_symbol{"RAM", 0};
