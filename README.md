@@ -16,6 +16,12 @@ docker run --rm --name eosio.cdt_v1.5.0 --volume /ABSOLUTE_PATH_TO_CONTRACT:/pro
 cleos set contract registrator ABSOLUTE_PATH_TO_CONTRACT -p registrator
 ```
 
+# Генерация документации
+Требуется Doxygen версии от 1.9.3
+```
+
+```
+
 # Действующие аккаунты
 - me - собственное имя аккаунта контракта
 - partners - имя аккаунта контракта хранилища партнёров
@@ -38,7 +44,7 @@ cleos set contract registrator ABSOLUTE_PATH_TO_CONTRACT -p registrator
 # Пополнение баланса
 Для совершения действий регистрации аккаунта, необходимо обладать системным токеном на своём балансе в регистраторе. Для пополнения баланса, необходимо отправить перевод на аккаунт контракта в системном токене с указанием регистратора в поле memo: 
 ```
-cleos transfer username registrator "100.0000 FLOWER" "registrator"
+cleos transfer your_account registrator "100.0000 FLOWER" "registrator"
 ```
 После чего можем получить баланс регистратора из таблицы:
 ```
@@ -47,7 +53,7 @@ cleos get table registrator registrator balance
 В ответе будет баланс:
 ```
 "rows": [{
-      "username": "username",
+      "username": "registrator",
       "quantity": "100.0000 FLOWER"
     }
   ],
@@ -56,7 +62,7 @@ cleos get table registrator registrator balance
 # Регистрация гостя
 Для регистрации аккаунта в качестве гостя, необходимо вызвать метод regaccount, передав параметр is_guest = true: 
 ```
-cleos push action registrator regaccount '[username, "", tester, EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV, "1.0000 FLOWER", "1.0000 FLOWER", 16384, true, false]' -p username
+cleos push action registrator regaccount '[registrator, "", tester, EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV, "1.0000 FLOWER", "1.0000 FLOWER", 16384, true, false]' -p registrator
 ```
 Тогда, получив аккаунт tester, мы увидим, что права владельца находятся у регистратора:
 ```
@@ -78,11 +84,39 @@ cpu bandwidth:
      available:        92.31 hr   
      limit:            92.31 hr   
 ```
+Для оплаты регистрации, гость должен пополнить свой баланс и вызвать метод payforguest:
+```
+cleos push action registrator payguest '[registrator, tester, "3.2786 FLOWER"]' -p registrator
+```
+Сумма к оплате может быть получена в таблице guests. Она расчитывается исходя из стоимости оперативной памяти в момент регистрации и количества системного токена, закладываемого в CPU и NET. 
+
+После оплаты, мы можем убедиться, что права владельца аккаунта находятся у владельца ключа:
+```
+permissions: 
+     owner     1:    1 EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+        active     1:    1 EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+memory: 
+     quota:        16 KiB    used:     2.926 KiB  
+
+net bandwidth: 
+     delegated:    1.0000 FLOWER           (total staked delegated to account from others)
+     used:                97 bytes
+     available:        3.109 TiB  
+     limit:            3.109 TiB  
+
+cpu bandwidth:
+     delegated:    1.0000 FLOWER           (total staked delegated to account from others)
+     used:             23.16 ms   
+     available:        90.57 hr   
+     limit:            90.57 hr   
+
+
+```
 
 # Регистрация партнёра
 Для регистрации аккаунта в качестве гостя, необходимо вызвать метод regaccount, передав параметр is_guest = false: 
 ```
-cleos push action registrator regaccount '[username, "", tester2, EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV, "1.0000 FLOWER", "1.0000 FLOWER", 16384, true, false]' -p username
+cleos push action registrator regaccount '[registrator, "", tester2, EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV, "1.0000 FLOWER", "1.0000 FLOWER", 16384, true, false]' -p registrator
 ```
 
 Тогда, получив аккаунт tester2, мы увидим, что права владельца находятся у владельца ключа:
@@ -111,7 +145,7 @@ cpu bandwidth:
 # Отзыв аккаунта гостя
 Для того, чтобы отозвать аккаунт у гостя, необходимо вызвать метод update. Метод получает таблицу guests с сортировкой по ключу expiration_at, и заменяет активные ключи аккаунтов на себя. Количество аккаунтов к отзыву за один вызов метода update регулируется константой BASKET. Вызов метода может осуществить любой аккаунт сети. 
 ```
-cleos push action registrator update '[]' -p tester
+cleos push action registrator update '[]' -p registrator
 ```
 Получив объект аккаунта истекшего гостя, увидим, что активные права доступа теперь принадлежат регистратору: 
 ```
@@ -141,13 +175,13 @@ cleos get table registrator registrator reserved
 ```
 "rows": [{
       "username": "eyfyjkpbctwv",
-      "registrator": "username"
+      "registrator": "registrator"
     },{
       "username": "hgrmogbyerml",
-      "registrator": "username"
+      "registrator": "registrator"
     },{
       "username": "yotlnhctihdg",
-      "registrator": "username"
+      "registrator": "registrator"
     }
   ]
 ```
@@ -155,3 +189,4 @@ cleos get table registrator registrator reserved
 # TODO
 - Рассмотреть возможность внедрения бизнес-модель доходного пула ликвидности для аккаунтов, обеспечивающих регистрацию гостей. Сейчас каждый регистратор обеспечивает оплату стоимости аккаунта собственными средствами. Предоставить возможность собирать средства на оплату новых регистраций из числа средств партнёров. 
 - Внедрить систему оценки и выдачу коротких имён.
+- Убрать LEGACY связь с контрактом core в методе payforguest.
