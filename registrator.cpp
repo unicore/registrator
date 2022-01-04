@@ -3,6 +3,26 @@
 using namespace eosio;
 
 
+
+  /**
+   * @brief      Метод регистрации нового аккаунта
+   * @auth    payer
+   * @ingroup public_actions
+   * @param[in]  payer        имя аккаунта регистратора
+   * @param[in]  referer      имя аккаунта реферера нового аккаунта (не обязательно, если set_referer = false)
+   * @param[in]  newaccount   имя нового аккаунта
+   * @param[in]  public_key   публичный ключ нового аккаунта
+   * @param[in]  cpu          количество системного токена в CPU
+   * @param[in]  net          количество системного токена в NET
+   * @param[in]  ram_bytes    количество оперативной памяти нового аккаунта
+   * @param[in]  is_guest     флаг регистрации в качестве гостя
+   * @param[in]  set_referer  флаг автоматической установки реферера в контракт партнёров
+   
+   * @details Метод производит регистрацию нового аккаунта в системе. Если is_guest = true, то аккаунт регистрируется
+   * в качестве гостя, что означает, что контракт регистратора устанавливает права владельца нового аккаунта на себя. 
+   * Если is_guest = false, то регистратор создаёт новый аккаунт с передачей прав владельца на него. 
+   * Флаг set_referer используется для автоматической установки партнёра в реферальную структуру, что не обязательно. 
+   */
   [[eosio::action]] void reg::regaccount(eosio::name payer, eosio::name referer, eosio::name newaccount, eosio::public_key public_key, eosio::asset cpu, eosio::asset net, uint64_t ram_bytes, bool is_guest, bool set_referer){
     require_auth(payer);
 
@@ -62,7 +82,7 @@ using namespace eosio;
         a.to_pay = total_pay + eosio::asset(_MIN_AMOUNT, _SYMBOL);
         a.public_key = public_key;
         a.cpu = cpu;
-        a.set_referer = set_referer;
+        // a.set_referer = set_referer;
         a.net = net;
       });
       
@@ -84,14 +104,6 @@ using namespace eosio;
       std::make_tuple(_me, newaccount, ram_price)
     ).send();
     
-    //TODO check it?!
-    // action(
-    //   permission_level{ _me, "active"_n},
-    //   "eosio"_n,
-    //   "buyram"_n,
-    //   make_tuple(_me, _me, ram_replace_amount)
-    // ).send();
-
     action(
       permission_level{ _me, "active"_n},
       "eosio"_n,
@@ -99,17 +111,26 @@ using namespace eosio;
      std::make_tuple(_me, newaccount, net, cpu, !is_guest)
     ).send();
 
-    if (set_referer)
+    if (set_referer){
       action(
         permission_level{ _me, "active"_n},
         _partners,
         "reg"_n,
        std::make_tuple(newaccount, referer, std::string(""))
       ).send();
-
+    }
     
   }
 
+
+  /**
+   * @brief      Метод отзыва аккаунтов гостей
+   * @auth    любой аккаунт
+   * @ingroup public_actions
+   
+   * @details Метод производит поиск аккаунтов гостей с истекшим сроком давности
+   * и заменяет им активные права доступа. Отозванные аккаунты помещаются в таблицу reserved для дальнейшего использования или полного удаления.
+   */
   [[eosio::action]] void reg::update(){
     
     guests_index guests(_me, _me.value);
@@ -164,29 +185,23 @@ using namespace eosio;
     }
   }
 
-
+  
   void reg::add_balance(eosio::name payer, eosio::name username, eosio::asset quantity, uint64_t code){
     require_auth(payer);
 
-    print("want add balance", username);
     balances_index balances(_me, _me.value);
     auto balance = balances.find(username.value);
-    print("find balance: ", balance->username);
-
-
+    
     if (code == "eosio.token"_n.value && quantity.symbol == _SYMBOL){
-      print("im inside");
       if (username == ""_n)
         username = payer;
 
-      print("quantity", quantity);
       if (balance  == balances.end()){
         balances.emplace(_me, [&](auto &b){
           b.username = username;
           b.quantity = quantity;
         }); 
       } else {
-        print("quantity", quantity);
         balances.modify(balance, _me, [&](auto &b){
           b.quantity += quantity;
         });
@@ -194,6 +209,17 @@ using namespace eosio;
     }
   }
 
+
+  /**
+   * @brief      Метод оплаты аккаунта гостя
+   * @auth payer
+   * @ingroup public_actions
+   * @param[in]  payer     
+   * @param[in]  username  The username
+   * @param[in]  quantity  The quantity
+   * @details Метод оплаты вызывается гостем после пополнения своего баланса как регистратора. 
+   * Оплата списывается с баланса регистратора, а права владельца заменяются на публичный ключ, указанный в объекте гостя.
+   */
   [[eosio::action]] void reg::payforguest(eosio::name payer, eosio::name username, eosio::asset quantity) {
     require_auth(payer);
 
@@ -202,7 +228,7 @@ using namespace eosio;
     eosio::check(guest != guests.end(), "Guest is not found");
 
 
-    if (payer != _core){ //not modify only on internal buy
+    if (payer != _core){ // LEGACY CHECK
       balances_index balances(_me, _me.value);
       auto balance = balances.find(payer.value);
 
@@ -237,7 +263,6 @@ extern "C" {
    
    /// The apply method implements the dispatch of events to this contract
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-        print("code: ", name(code));
         if (code == reg::_me.value) {
           if (action == "update"_n.value){
             execute_action(name(receiver), name(code), &reg::update);
@@ -250,7 +275,7 @@ extern "C" {
         } else {
           if (action == "transfer"_n.value){
             
-            struct transfer{
+            struct transfer {
                 eosio::name from;
                 eosio::name to;
                 eosio::asset quantity;
@@ -261,7 +286,6 @@ extern "C" {
             if (op.to == reg::_me){
 
               eosio::name username = eosio::name(op.memo.c_str());
-              print("want add balance0", username);
               reg::add_balance(op.from, username, op.quantity, code);
             }
           }

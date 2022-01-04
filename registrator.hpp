@@ -7,6 +7,24 @@
 #include <eosiolib/crypto.hpp>
 #include "exchange_state.hpp"
 
+/**
+\defgroup public_consts CONSTS
+\brief Константы контракта
+*/
+
+/**
+\defgroup public_actions ACTIONS
+\brief Методы действий контракта
+*/
+
+/**
+\defgroup public_tables TABLES
+\brief Структуры таблиц контракта
+*/
+
+/**
+ * @brief      Начните ознакомление здесь.
+*/
 class [[eosio::contract]] reg : public eosio::contract {
 
 public:
@@ -24,23 +42,30 @@ public:
     void apply(uint64_t receiver, uint64_t code, uint64_t action);
     
     
-
-    static constexpr eosio::name _me = "registrator"_n;
-    static constexpr eosio::name _partners = "part"_n;
-    static constexpr eosio::name _core = "unicore"_n;
-    static constexpr eosio::name _system_account = "eosio"_n;
-    static const uint64_t _GUEST_EXPIRATION = 1209600; //14 days
+    /**
+    * @ingroup public_consts 
+    * @{ 
+    */
+    
+    static constexpr eosio::name _me = "registrator"_n;             /*!< собственное имя аккаунта контракта */
+    static constexpr eosio::name _partners = "part"_n;              /*!< имя аккаунта контракта хранилища партнёров */
+    static constexpr eosio::name _core = "unicore"_n;               /*!< имя аккаунта цифровой экономики ядра */
+    static constexpr eosio::name _system_account = "eosio"_n;       /*!< имя аккаунта системного контракта */
+    
+    static const uint64_t _GUEST_EXPIRATION = 1209600;              /*!< продолжительность гостевого периода, после которого, аккаунт может быть отозван */
     // static const uint64_t _GUEST_EXPIRATION = 10; //10 secs
-    static constexpr eosio::symbol _SYMBOL = eosio::symbol(eosio::symbol_code("FLOWER"),4);
-    static constexpr eosio::symbol _ramcore_symbol = eosio::symbol(eosio::symbol_code("RAMCORE"), 4);
+    static constexpr eosio::symbol _SYMBOL = eosio::symbol(eosio::symbol_code("FLOWER"),4); /*!< системный токен */
+    static constexpr eosio::symbol _ramcore_symbol = eosio::symbol(eosio::symbol_code("RAMCORE"), 4); /*!< идентификационный токен рынка оперативной памяти */
 
-    static constexpr eosio::symbol RAM_symbol{"RAM", 0};
+    static constexpr eosio::symbol RAM_symbol{"RAM", 0}; /*!< токен рынка оперативной памяти */
 
-    static const uint64_t _MIN_AMOUNT = 10000; 
+    static const uint64_t _MIN_AMOUNT = 10000;           /*!< комиссия, взымаемая регистратором за пользование гостевым аккаунтом */
         
-    static const uint64_t _BASKET = 3;
+    static const uint64_t _BASKET = 3;                  /*!< количество гостевых аккаунтов, которые могут быть отозваны за один вызов действия */
     
-    
+    /**
+    * @}
+    */
     
 
 
@@ -82,21 +107,30 @@ public:
       EOSLIB_SERIALIZE( authority, (threshold)(keys)(accounts)(waits) )
    };
 
-    struct [[eosio::table]] guests {
-        eosio::name username;
-        
-        eosio::name registrator;
-        eosio::public_key public_key;
-        eosio::asset cpu;
-        eosio::asset net;
-        bool set_referer = false;
-        eosio::time_point_sec expiration;
 
-        eosio::asset to_pay;
+    /**
+     * @brief      Таблица хранения объектов гостей
+     * @ingroup public_tables
+     * @table guests
+     * @contract _me
+     * @scope _me
+     * @details Хранит аккаунты, зарегистрированные в системе в качестве гостей, чьи права владельца аккаунта принадлежат регистратору _me. 
+    */
+    struct [[eosio::table]] guests {
+        eosio::name username;             /*!< имя аккаунта гостя */
         
-        uint64_t primary_key() const {return username.value;}
-        uint64_t byexpr() const {return expiration.sec_since_epoch();}
-        uint64_t byreg() const {return registrator.value;}
+        eosio::name registrator;          /*!< имя аккаунта регистратора гостя */
+        eosio::public_key public_key;     /*!< публичный ключ гостя, который использовался в качестве активного ключа и на который будут переданы права владельца после оплаты */
+        eosio::asset cpu;                 /*!< количество системного токена, закладываемого в CPU */
+        eosio::asset net;                 /*!< количество системного токена, закладываемого в NET */
+        bool set_referer = false;         /*!< флаг автоматической регистрации партёром (не используется) */
+        eosio::time_point_sec expiration; /*!< дата истечения пользования аккаунтом */
+
+        eosio::asset to_pay;              /*!< количество токенов к оплате */
+        
+        uint64_t primary_key() const {return username.value;}     /*!< return username - primary_key */
+        uint64_t byexpr() const {return expiration.sec_since_epoch();} /*!< return expiration - secondary_key 2 */
+        uint64_t byreg() const {return registrator.value;}            /*!< return registrator - secondary_key 3 */
 
         EOSLIB_SERIALIZE(guests, (username)(registrator)(public_key)(cpu)(net)(set_referer)(expiration)(to_pay))
     };
@@ -107,11 +141,20 @@ public:
     > guests_index;
 
 
-    struct [[eosio::table]] reserved {
-        eosio::name username;
-        eosio::name registrator;
 
-        uint64_t primary_key() const {return username.value;}
+    /**
+     * @brief      Таблица хранения отозванных аккаунтов гостей
+     * @ingroup public_tables
+     * @table reserved
+     * @contract _me
+     * @scope _me
+     * @details Хранит аккаунты, отозванные у гостей путём замены их активного ключа на ключ регистратора за истечением срока давности без поступления оплаты.
+    */
+    struct [[eosio::table]] reserved {
+        eosio::name username;         /*!< имя аккаунта гостя */
+        eosio::name registrator;      /*!< имя аккаунта регистратора */
+
+        uint64_t primary_key() const {return username.value;} /*!< return username - primary_key */
 
         EOSLIB_SERIALIZE(reserved, (username)(registrator))
     };
@@ -119,12 +162,19 @@ public:
     typedef eosio::multi_index<"reserved"_n, reserved> reserved_index;
  
 
-
+    /**
+     * @brief      Таблица хранения балансов регистраторов
+     * @ingroup public_tables
+     * @table balance
+     * @contract _me
+     * @scope _me
+     * @details Хранит балансы регистраторов аккаунтов в системных токенах для оплаты регистрации аккаунтов гостей в "долг". 
+    */
     struct [[eosio::table]] balance {
-        eosio::name username;
-        eosio::asset quantity;
+        eosio::name username;     /*!< имя аккаунта гостя */
+        eosio::asset quantity;    /*!< количество системных токенов */
 
-        uint64_t primary_key() const {return username.value;}
+        uint64_t primary_key() const {return username.value;} /*!< return username - primary_key */
 
         EOSLIB_SERIALIZE(balance, (username)(quantity))
     };
