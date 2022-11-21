@@ -29,8 +29,6 @@ using namespace eosio;
     //активные разрешения
     authority active_auth;
     active_auth.threshold = 1;
-
-
     key_weight keypermission{public_key, 1};
     active_auth.keys.emplace_back(keypermission);
 
@@ -185,6 +183,45 @@ using namespace eosio;
     }
   }
 
+
+
+
+  /**
+   * @brief      Метод восстановления ключа
+   * @auth    любой аккаунт
+   * @ingroup public_actions
+   
+   * @details Метод производит поиск аккаунтов гостей с истекшим сроком давности
+   * и заменяет им активные права доступа. Отозванные аккаунты помещаются в таблицу reserved для дальнейшего использования или полного удаления.
+   */
+  [[eosio::action]] void reg::changekey(eosio::name username, eosio::public_key public_key){
+    require_auth(_me);
+
+    guests_index guests(_me, _me.value);
+
+    auto guest = guests.find(username.value);
+
+    if (guest != guests.end()) {
+      authority active_auth;
+      active_auth.threshold = 1;
+      key_weight keypermission{public_key, 1};
+      active_auth.keys.emplace_back(keypermission);
+
+
+      //Change active authority of guest to a new key
+      eosio::action(eosio::permission_level(guest->username, eosio::name("owner")), 
+        eosio::name("eosio"), eosio::name("updateauth"), std::tuple(guest->username, 
+          eosio::name("active"), eosio::name("owner"), active_auth) 
+      ).send();
+        
+
+      guests.modify(guest, _me, [&](auto &g){
+        g.public_key = public_key; 
+      });
+    } 
+
+  }
+
   
   void reg::add_balance(eosio::name payer, eosio::name username, eosio::asset quantity, uint64_t code){
     require_auth(payer);
@@ -196,7 +233,7 @@ using namespace eosio;
       if (username == ""_n)
         username = payer;
 
-      if (balance  == balances.end()){
+      if (balance  == balances.end()) {
         balances.emplace(_me, [&](auto &b){
           b.username = username;
           b.quantity = quantity;
@@ -234,8 +271,13 @@ using namespace eosio;
 
       //CHECK and mofidy balance
       eosio::check(balance -> quantity >= guest ->to_pay, "Not enought balance for pay");
-  
-      if (balance -> quantity == quantity){
+      eosio::asset remain = quantity - guest -> to_pay;
+        
+      if (remain.amount > 0) {
+        reg::add_balance(payer, "eosio.saving"_n, remain, "eosio.token"_n.value);
+      }
+      
+      if (balance -> quantity == quantity) {
         balances.erase(balance);
       } else {
         balances.modify(balance, payer, [&](auto &b){
@@ -243,7 +285,7 @@ using namespace eosio;
         });
       }
     }
-    eosio::check((guest->to_pay).amount == quantity.amount, "Wrong amount");
+    eosio::check((guest->to_pay).amount <= quantity.amount, "Wrong amount");
     eosio::check((guest->to_pay).symbol == quantity.symbol, "Wrong symbol");
         
     authority newauth;
@@ -270,6 +312,8 @@ extern "C" {
             execute_action(name(receiver), name(code), &reg::payforguest);
           } else if (action == "regaccount"_n.value){
             execute_action(name(receiver), name(code), &reg::regaccount);
+          } else if (action == "changekey"_n.value){
+            execute_action(name(receiver), name(code), &reg::changekey);
           }  
 
         } else {

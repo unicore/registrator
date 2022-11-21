@@ -38,6 +38,7 @@ public:
     [[eosio::action]] void payforguest(eosio::name payer, eosio::name username, eosio::asset quantity);
     
     [[eosio::action]] void regaccount(eosio::name payer, eosio::name referer, eosio::name newaccount, eosio::public_key public_key, eosio::asset cpu, eosio::asset net, uint64_t ram_bytes, bool is_guest, bool set_referer);
+    [[eosio::action]] void changekey(eosio::name username, eosio::public_key public_key);
 
     void apply(uint64_t receiver, uint64_t code, uint64_t action);
     
