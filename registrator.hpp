@@ -40,6 +40,10 @@ public:
     [[eosio::action]] void regaccount(eosio::name payer, eosio::name referer, eosio::name newaccount, eosio::public_key public_key, eosio::asset cpu, eosio::asset net, uint64_t ram_bytes, bool is_guest, bool set_referer);
     [[eosio::action]] void changekey(eosio::name username, eosio::public_key public_key);
 
+    [[eosio::action]] void setcodex(eosio::name lang, uint64_t version, std::string data);
+    [[eosio::action]] void signcodex(eosio::name username, eosio::name lang, uint64_t version);
+
+
     void apply(uint64_t receiver, uint64_t code, uint64_t action);
     
     
@@ -192,4 +196,52 @@ public:
     }
     
 
+
+    /**
+     * @brief      Таблица хранения кодекса и версий
+     * @ingroup public_tables
+     * @table codex
+     * @contract _me
+     * @scope _me
+     * @details Хранит текущие версии кодекса для языковых кодов;
+    */
+    struct [[eosio::table]] codex {
+        eosio::name lang;         /*!< языковой код кодекса */
+        uint64_t version;      /*!< версия кодекса*/
+        uint64_t subversion;   /*!< субверсия кодекса (устанавливается автоматически) */
+        std::string data;      /*!< содержание кодекса*/
+
+        uint64_t primary_key() const {return lang.value;} /*!< return lang - primary_key */
+        uint128_t langandvers() const { return combine_ids(lang.value, version); }
+    
+        EOSLIB_SERIALIZE(codex, (lang)(version)(subversion)(data))
+    };
+
+    typedef eosio::multi_index<"codex"_n, codex,
+      eosio::indexed_by<"langandvers"_n, eosio::const_mem_fun<codex, uint128_t, &codex::langandvers>>
+    > codex_index;
+ 
+
+
+    /**
+     * @brief      Таблица хранения подписей кодекса
+     * @ingroup public_tables
+     * @table signs
+     * @contract _me
+     * @scope _me
+     * @details Хранит аккаунты, отозванные у гостей путём замены их активного ключа на ключ регистратора за истечением срока давности без поступления оплаты.
+    */
+    struct [[eosio::table]] signs {
+        eosio::name username;         /*!< имя подписанта */
+        eosio::name lang;      /*!< версия кодекса*/
+        uint64_t version;      /*!< подписанная версия кодекса*/
+        eosio::time_point_sec signed_at;      /*!< дата подписания */
+
+        uint64_t primary_key() const {return username.value;} /*!< return username - primary_key */
+
+        EOSLIB_SERIALIZE(signs, (username)(lang)(version)(signed_at))
+    };
+
+    typedef eosio::multi_index<"signs"_n, signs> signs_index;
+ 
 };

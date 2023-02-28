@@ -301,6 +301,96 @@ using namespace eosio;
   }
 
 
+
+  /**
+   * @brief      Метод обновления кодекса
+   * @auth    любой аккаунт
+   * @ingroup public_actions
+   
+   * @details Метод производит поиск аккаунтов гостей с истекшим сроком давности
+   * и заменяет им активные права доступа. Отозванные аккаунты помещаются в таблицу reserved для дальнейшего использования или полного удаления.
+   */
+  [[eosio::action]] void reg::setcodex(eosio::name lang, uint64_t version, std::string data) {
+    require_auth("eosio"_n);
+
+    codex_index codex(_me, _me.value);
+
+    auto exist = codex.find(lang.value);
+
+    if (exist == codex.end()) {
+
+      codex.emplace(_me, [&](auto &c){
+        c.lang = lang;
+        c.version = version;
+        c.subversion = 1;
+        c.data = data;
+      });
+      
+    } else {
+
+      codex.modify(exist, _me, [&](auto &c) {
+        if (exist -> version == version) 
+          c.subversion += 1;
+        else c.subversion = 1;
+
+        c.version = version;
+        c.data = data;
+      });
+
+    }
+
+  }
+
+
+
+  /**
+   * @brief      Метод подписания кодекса
+   * @auth    любой аккаунт
+   * @ingroup public_actions
+   
+   * @details Метод подписывает кодекс
+   */
+  [[eosio::action]] void reg::signcodex(eosio::name username, eosio::name lang, uint64_t version) {
+    require_auth(username);
+
+    codex_index codex(_me, _me.value);
+    
+    auto by_lang_and_version_idx = codex.template get_index<"langandvers"_n>();
+
+    auto lang_version_ids = combine_ids(lang.value, version);
+    auto cdcs = by_lang_and_version_idx.find(lang_version_ids);
+    eosio::check(cdcs != by_lang_and_version_idx.end(), "Codex for sign is not found");
+
+    signs_index signs(_me, _me.value);
+    auto sign = signs.find(username.value);
+
+    if (sign != signs.end()){
+      eosio::check(sign -> version != version, "Codex with current version is already signed");  
+      
+      signs.modify(sign, _me, [&](auto &s){
+        s.version = version;
+        s.signed_at = eosio::time_point_sec(now());
+      });
+
+    } else {
+
+      signs.emplace(_me, [&](auto &s){
+          s.username = username;
+          s.lang = lang;
+          s.version = version;
+          s.signed_at = eosio::time_point_sec(now());
+      });
+
+    };
+    
+
+
+
+  }
+
+  
+
+
 extern "C" {
    
    /// The apply method implements the dispatch of events to this contract
@@ -314,7 +404,11 @@ extern "C" {
             execute_action(name(receiver), name(code), &reg::regaccount);
           } else if (action == "changekey"_n.value){
             execute_action(name(receiver), name(code), &reg::changekey);
-          }  
+          } else if (action == "setcodex"_n.value){
+            execute_action(name(receiver), name(code), &reg::setcodex);
+          } else if (action == "signcodex"_n.value){
+            execute_action(name(receiver), name(code), &reg::signcodex);
+          }
 
         } else {
           if (action == "transfer"_n.value){
